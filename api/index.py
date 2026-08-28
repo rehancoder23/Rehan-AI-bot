@@ -27,9 +27,12 @@ async def verify_webhook(request: Request):
     token = params.get("hub.verify_token")
     challenge = params.get("hub.challenge")
 
-    if mode == "subscribe" and token == VERIFY_TOKEN:
-        return Response(content=challenge, status_code=200)
-    return Response(content="Verification failed", status_code=403)
+    if mode and token:
+        if mode == "subscribe" and token == VERIFY_TOKEN:
+            return Response(content=challenge, media_type="text/plain", status_code=200)
+        else:
+            return Response(content="Verification token mismatch", status_code=403)
+    return Response(content="Missing parameters", status_code=400)
 
 @app.post("/webhook")
 async def receive_message(request: Request):
