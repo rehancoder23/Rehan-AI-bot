@@ -36,9 +36,10 @@ async def verify_webhook(request: Request):
 
 @app.post("/webhook")
 async def receive_message(request: Request):
-    data = await request.json()
-    
     try:
+        data = await request.json()
+        print("Incoming Webhook Data:", data)
+        
         entry = data.get("entry", [])[0]
         changes = entry.get("changes", [])[0]
         value = changes.get("value", {})
@@ -48,6 +49,7 @@ async def receive_message(request: Request):
             msg = messages[0]
             from_number = msg.get("from")
             text_body = msg.get("text", {}).get("body", "")
+            print(f"Received message from {from_number}: {text_body}")
 
             if text_body:
                 client = get_gemini_client()
@@ -57,13 +59,15 @@ async def receive_message(request: Request):
                         contents=text_body,
                     )
                     reply_text = response.text
+                    print(f"Gemini Reply: {reply_text}")
                 else:
                     reply_text = "Server Error: GEMINI_API_KEY missing hai."
+                    print("Gemini API Key missing!")
 
                 send_whatsapp_message(from_number, reply_text)
 
     except Exception as e:
-        print(f"Error processing message: {e}")
+        print(f"CRITICAL ERROR processing message: {e}")
 
     return {"status": "success"}
 
@@ -72,6 +76,7 @@ def send_whatsapp_message(to_number, text):
     phone_id = os.getenv("PHONE_NUMBER_ID")
 
     if not token or not phone_id:
+        print("WhatsApp Token or Phone ID missing in environment variables!")
         return
 
     url = f"https://graph.facebook.com/v20.0/{phone_id}/messages"
@@ -85,4 +90,5 @@ def send_whatsapp_message(to_number, text):
         "type": "text",
         "text": {"body": text}
     }
-    requests.post(url, json=payload, headers=headers)
+    res = requests.post(url, json=payload, headers=headers)
+    print(f"WhatsApp Send Response: {res.status_code}, {res.text}")
